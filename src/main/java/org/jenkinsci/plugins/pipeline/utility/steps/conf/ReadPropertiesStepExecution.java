@@ -41,6 +41,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import java.net.InetAddress;
+import java.lang.StringBuilder;
+import java.lang.ProcessBuilder;
+import java.lang.Process;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.lang.InterruptedException;
+
 /**
  * Execution of {@link ReadPropertiesStep}.
  *
@@ -61,6 +70,25 @@ public class ReadPropertiesStepExecution extends AbstractFileOrTextStepExecution
         PrintStream logger = getLogger();
         Properties properties = new Properties();
 
+        logger.println(InetAddress.getLocalHost().getHostName());  // This returns the hostname of the jenkins controller
+        ProcessBuilder processBuilder = new ProcessBuilder();
+        processBuilder.command("/bin/bash", "-c", "uname -a");     // This returns the hostname of the jenkins controller
+        try {
+            Process process = processBuilder.start();
+            StringBuilder output = new StringBuilder();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line + "\n");
+            }
+            int exitVal = process.waitFor();
+            logger.println(exitVal);
+            logger.println(output);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
         if (step.getDefaults() != null) {
         	properties.putAll(step.getDefaults());
         }
