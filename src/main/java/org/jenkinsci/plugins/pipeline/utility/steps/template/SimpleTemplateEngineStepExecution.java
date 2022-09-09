@@ -25,23 +25,30 @@
 package org.jenkinsci.plugins.pipeline.utility.steps.template;
 
 import edu.umd.cs.findbugs.annotations.NonNull;
-import hudson.FilePath;
+
 import groovy.text.SimpleTemplateEngine;
 import groovy.text.Template;
+
+import hudson.FilePath;
+import hudson.model.Item;
+import hudson.model.TaskListener;
+
 import org.apache.commons.io.IOUtils;
 import org.jenkinsci.plugins.pipeline.utility.steps.AbstractFileOrTextStepExecution;
-import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.GroovySandbox;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.Whitelist;
+import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.GroovySandbox;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.whitelists.ProxyWhitelist;
+import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
+import org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval;
+import org.jenkinsci.plugins.scriptsecurity.scripts.languages.GroovyLanguage;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import java.io.IOException;
 
-import static org.apache.commons.lang.StringUtils.isBlank;
 import static org.apache.commons.lang.StringUtils.isNotBlank;
 
 /**
@@ -61,6 +68,9 @@ public class SimpleTemplateEngineStepExecution extends AbstractFileOrTextStepExe
 
     @Override
     protected String doRun() throws Exception {
+        TaskListener listener = getContext().get(TaskListener.class);
+        PrintStream logger = listener.getLogger();
+
         String fName = step.getDescriptor().getFunctionName();
         if (isNotBlank(step.getFile()) && isNotBlank(step.getText())) {
             throw new IllegalArgumentException(Messages.SimpleTemplateEngineStepExecution_tooManyArguments(fName));
@@ -71,35 +81,42 @@ public class SimpleTemplateEngineStepExecution extends AbstractFileOrTextStepExe
         }
 
         SimpleTemplateEngine engine = new SimpleTemplateEngine();
-        Template template = null;
+        String templateText = "";
         if (isNotBlank(step.getFile())) {
             FilePath f = ws.child(step.getFile());
             if (f.exists() && !f.isDirectory()) {
                 try (InputStream is = f.read()) {
-                    template = engine.createTemplate(IOUtils.toString(is, StandardCharsets.UTF_8));
+                    templateText = IOUtils.toString(is, StandardCharsets.UTF_8);
                 }
             } else if (f.isDirectory()) {
                 throw new IllegalArgumentException(Messages.SimpleTemplateEngineStepExecution_fileIsDirectory(f.getRemote()));
             } else if (!f.exists()) {
                 throw new FileNotFoundException(Messages.SimpleTemplateEngineStepExecution_fileNotFound(f.getRemote()));
-	    }
-        }
-        if (isNotBlank(step.getText())) {
-            template = engine.createTemplate(step.getText().trim());
+	        }
+        } else if (isNotBlank(step.getText())) {
+            templateText = step.getText().trim();
         }
 
-        String renderedTemplate = "";
-        final Template templateR = template;
+        final String templateTextFinal = templateText;
         final Map<String, Object> bindings = step.getBindings();
-        if (step.isRunInSandbox()) {
+
+        // TODO: Deal with exceptions thrown by incorrect templates, like template with references to non-existent binding
+        String renderedTemplate = "";
+        if (!step.isRunInSandbox()) {
+            logger.println("simpleTemplateEngine running in script approval mode");
+            ScriptApproval.get().configuring(templateTextFinal, GroovyLanguage.get(), ApprovalContext.create().withItem(getContext().get(Item.class)));
+            Template template = engine.createTemplate(templateTextFinal);
+            renderedTemplate = template.make(bindings).toString();
+        } else {
+            logger.println("simpleTemplateEngine running in sandbox mode");
             renderedTemplate = GroovySandbox.runInSandbox(
                 () -> {
-                    return templateR.make(bindings).toString();
+                    final Template template = engine.createTemplate(templateTextFinal);
+                    return template.make(bindings).toString();
                 },
                 new ProxyWhitelist(Whitelist.all())
             );
-        } else {
-            renderedTemplate = templateR.make(bindings).toString();
+
         }
         return renderedTemplate;
     }

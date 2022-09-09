@@ -150,11 +150,12 @@ public class SimpleTemplateEngineStepTest {
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
                 "node() {\n"+
-                        "def binding = [build: currentBuild]\n"+
-                        "String text = '''Build result: ${build.currentResult}'''\n"+
-                        "String result = simpleTemplateEngine runInSandbox: true, text:text, bindings: binding\n"+
-                        "assert result == 'Build result: SUCCESS'\n"+
-                        "}", true));
+                    "def binding = [build: currentBuild]\n"+
+                    "String text = '''<%\n"+
+                    "    def f = hudson.model.Result.FAILURE\n"+ // This signature is pre-approved in the Script security sandbox
+                    "%>'''\n"+
+                    "String result = simpleTemplateEngine runInSandbox: true, text:text, bindings: binding\n"+
+                "}", true));
         WorkflowRun run = j.assertBuildStatusSuccess(p.scheduleBuild2(0));
         j.assertLogContains("simpleTemplateEngine", run);
     }
@@ -166,11 +167,12 @@ public class SimpleTemplateEngineStepTest {
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
                 "node() {\n"+
-                        "def binding = [build: currentBuild]\n"+
-                        "String text = '''Build result: ${build.currentResult}'''\n"+
-                        "String result = simpleTemplateEngine runInSandbox: false, text:text, bindings: binding\n"+
-                        "assert false\n"+ // Fake the failure until TODO is figured out
-                        "}", true));
+                    "def binding = [build: currentBuild]\n"+
+                    "String text = '''<%\n"+
+                    "    def f = hudson.model.Result.FAILURE\n"+ // This signature is pre-approved in the Script security sandbox
+                    "%>'''\n"+
+                    "String result = simpleTemplateEngine runInSandbox: false, text:text, bindings: binding\n"+
+                "}", true));
         WorkflowRun run = j.assertBuildStatus(Result.FAILURE, p.scheduleBuild2(0).get());
         j.assertLogContains("simpleTemplateEngine", run);
     }
@@ -182,12 +184,15 @@ public class SimpleTemplateEngineStepTest {
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
                 "node() {\n"+
-                        "def binding = [build: currentBuild]\n"+
-                        "String text = '''Build result: ${build.currentResult}'''\n"+
-                        "String result = simpleTemplateEngine text:text, bindings: binding\n"+
-                        "assert false\n"+ // Fake the failure until TODO is figured out
-                        "}", true));
+                    "def binding = [build: currentBuild]\n"+
+                    "String text = '''<%\n"+
+                    "    def f = hudson.model.Result.FAILURE\n"+ // This signature is pre-approved in the Script security sandbox
+                    "%>'''\n"+
+                    "String result = simpleTemplateEngine text:text, bindings: binding\n"+
+                "}", true));
         WorkflowRun run = j.assertBuildStatus(Result.FAILURE, p.scheduleBuild2(0).get());
         j.assertLogContains("simpleTemplateEngine", run);
     }
+
+    // TODO: a test that approves the script to be run so we can prove the script approval has worked
 }
