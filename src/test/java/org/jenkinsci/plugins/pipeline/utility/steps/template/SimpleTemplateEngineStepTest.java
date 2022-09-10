@@ -135,16 +135,17 @@ public class SimpleTemplateEngineStepTest {
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
                 "node() {\n"+
-                        "def binding = [firstname : \"Grace\",]\n"+
-                        "String text = '''Dear <%= wrong %> '''\n"+
+                        "def binding = [firstname : 'Grace',]\n"+
+                        "String text = '''Dear <%= invalid %> '''\n"+
                         "String result = simpleTemplateEngine text:text, bindings: binding\n"+
-                        "}", true));
-        WorkflowRun run = j.assertBuildStatus(Result.FAILURE, p.scheduleBuild2(0).get());
+                        "echo(result)\n"+
+                "}", true));
+        WorkflowRun run = j.assertBuildStatus(Result.SUCCESS, p.scheduleBuild2(0).get());
         j.assertLogContains("simpleTemplateEngine", run);
-        j.assertLogContains("hudson.remoting.ProxyException: groovy.lang.MissingPropertyException: No such property: wrong for class: SimpleTemplateScript", run);
+        j.assertLogContains("Exception raised during template rendering: No such property: invalid for class: SimpleTemplateScript", run);
     }
 
-    // TODO: The next test needs input stimulus that only works when runInSandbox is true
+    // This test has a template that contains something that requires the sandbox
     @Test
     public void runInSandboxTrue() throws Exception {
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");

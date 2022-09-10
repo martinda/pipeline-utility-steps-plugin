@@ -30,6 +30,7 @@ import groovy.text.SimpleTemplateEngine;
 import groovy.text.Template;
 
 import hudson.FilePath;
+import hudson.Functions;
 import hudson.model.Item;
 import hudson.model.TaskListener;
 
@@ -45,7 +46,10 @@ import org.jenkinsci.plugins.workflow.steps.StepContext;
 
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.io.IOException;
 import java.io.PrintStream;
+import java.io.StringWriter;
+import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
@@ -100,23 +104,29 @@ public class SimpleTemplateEngineStepExecution extends AbstractFileOrTextStepExe
         final String templateTextFinal = templateText;
         final Map<String, Object> bindings = step.getBindings();
 
-        // TODO: Deal with exceptions thrown by incorrect templates, like template with references to non-existent binding
         String renderedTemplate = "";
-        if (!step.isRunInSandbox()) {
-            logger.println("simpleTemplateEngine running in script approval mode");
-            ScriptApproval.get().configuring(templateTextFinal, GroovyLanguage.get(), ApprovalContext.create().withItem(getContext().get(Item.class)));
-            Template template = engine.createTemplate(templateTextFinal);
-            renderedTemplate = template.make(bindings).toString();
-        } else {
-            logger.println("simpleTemplateEngine running in sandbox mode");
-            renderedTemplate = GroovySandbox.runInSandbox(
-                () -> {
-                    final Template template = engine.createTemplate(templateTextFinal);
-                    return template.make(bindings).toString();
-                },
-                new ProxyWhitelist(Whitelist.all())
-            );
+        try {
+            if (!step.isRunInSandbox()) {
+                logger.println("simpleTemplateEngine running in script approval mode");
+                ScriptApproval.get().configuring(templateTextFinal, GroovyLanguage.get(), ApprovalContext.create().withItem(getContext().get(Item.class)));
+                Template template = engine.createTemplate(templateTextFinal);
+                renderedTemplate = template.make(bindings).toString();
+            } else {
+                logger.println("simpleTemplateEngine running in sandbox mode");
+                renderedTemplate = GroovySandbox.runInSandbox(
+                    () -> {
+                        final Template template = engine.createTemplate(templateTextFinal);
+                        return template.make(bindings).toString();
+                    },
+                    new ProxyWhitelist(Whitelist.all())
+                );
 
+            }
+        } catch (Exception ex) {
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            Functions.printStackTrace(ex, pw);
+            renderedTemplate = "Exception raised during template rendering: " + ex.getMessage() + "\n\n" + sw;
         }
         return renderedTemplate;
     }
