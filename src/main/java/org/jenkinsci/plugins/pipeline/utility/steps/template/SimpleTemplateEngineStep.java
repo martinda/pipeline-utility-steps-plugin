@@ -26,12 +26,14 @@ package org.jenkinsci.plugins.pipeline.utility.steps.template;
 import edu.umd.cs.findbugs.annotations.NonNull;
 import hudson.Extension;
 import java.util.Map;
-import org.jenkinsci.plugins.pipeline.utility.steps.AbstractFileOrTextStep;
 import org.jenkinsci.plugins.pipeline.utility.steps.AbstractFileOrTextStepDescriptorImpl;
+import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.SecureGroovyScript;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 import org.jenkinsci.plugins.workflow.steps.StepExecution;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
+
+import org.jenkinsci.plugins.pipeline.utility.steps.AbstractFileOrTextStep;
 
 /**
  * Binds a map to a groovy template using the SimpleTemplateEngine.
@@ -69,6 +71,7 @@ public class SimpleTemplateEngineStep extends AbstractFileOrTextStep {
         public String getDisplayName() {
             return Messages.SimpleTemplateEngineStep_DescriptorImpl_displayName();
         }
+
     }
 
     public Map<String, Object> getBindings() {

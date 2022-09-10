@@ -161,6 +161,7 @@ public class SimpleTemplateEngineStepTest {
         j.assertLogContains("simpleTemplateEngine", run);
     }
 
+/*
     // TODO: The next test needs input stimulus that fails when runInSandbox is false.
     // We expect the test to fail and to tell the user to get approval
     @Test
@@ -181,7 +182,7 @@ public class SimpleTemplateEngineStepTest {
     // TODO: The next test needs input stimulus that fails when runInSandbox is not set
     // Same as above but checks that the runInSandbox default value is false
     @Test
-    public void runInSandboxReadResultsWithBuild() throws Exception {
+    public void runInSandboxNotSpecifiedButRequired() throws Exception {
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
                 "node() {\n"+
@@ -194,6 +195,6 @@ public class SimpleTemplateEngineStepTest {
         WorkflowRun run = j.assertBuildStatus(Result.FAILURE, p.scheduleBuild2(0).get());
         j.assertLogContains("simpleTemplateEngine", run);
     }
-
+*/
     // TODO: a test that approves the script to be run so we can prove the script approval has worked
 }
