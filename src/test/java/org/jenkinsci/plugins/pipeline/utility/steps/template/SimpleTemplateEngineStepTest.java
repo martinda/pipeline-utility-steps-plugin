@@ -158,6 +158,7 @@ public class SimpleTemplateEngineStepTest {
                     "String result = simpleTemplateEngine runInSandbox: true, text:text, bindings: binding\n"+
                 "}", true));
         WorkflowRun run = j.assertBuildStatusSuccess(p.scheduleBuild2(0));
+        System.out.println(j.getLog(run));
         j.assertLogContains("simpleTemplateEngine", run);
     }
 

@@ -137,13 +137,12 @@ public class SimpleTemplateEngineStepExecution extends AbstractFileOrTextStepExe
                 logger.println("simpleTemplateEngine running in script approval mode");
                 ScriptApproval.get().configuring(text, GroovyLanguage.get(), ApprovalContext.create().withItem(getContext().get(Item.class)));
                 renderedTemplate = templateFinal.make(bindings).toString();
-/*
+                logger.println("Script approved: " + ScriptApproval.get().isScriptApproved(text, GroovyLanguage.get()));
                 if (ScriptApproval.get().isScriptApproved(text, GroovyLanguage.get())) {
                     renderedTemplate = templateFinal.make(bindings).toString();
                 } else {
-                    ScriptApproval.get().checking(text, GroovyLanguage.get());
+                    logger.println("Not approved");
                 }
-*/
             } else {
                 logger.println("simpleTemplateEngine running in sandbox mode");
                 renderedTemplate = GroovySandbox.runInSandbox(
