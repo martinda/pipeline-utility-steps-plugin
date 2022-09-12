@@ -119,50 +119,51 @@ public class SimpleTemplateEngineStepExecution extends AbstractFileOrTextStepExe
         final Map<String, Object> bindings = step.getBindings();
 
         String renderedTemplate = "";
+
+        SimpleTemplateEngineStep.DescriptorImpl descriptor = Jenkins.get().getDescriptorByType(SimpleTemplateEngineStep.DescriptorImpl.class);
+        GroovyShell shell = createEngine(descriptor, Collections.emptyMap(), false);
+        SimpleTemplateEngine engine = new SimpleTemplateEngine(shell);
+        Template tmpl;
+
+        synchronized(templateCache) {
+            Reference<Template> templateR = templateCache.get(text);
+            tmpl = templateR == null ? null : templateR.get();
+            if (tmpl == null) {
+                tmpl = engine.createTemplate(text);
+                templateCache.put(text, new SoftReference<>(tmpl));
+            }
+        }
+        final Template templateFinal = tmpl;
+
+        if (step.isRunInSandbox()) {
+            logger.println("simpleTemplateEngine running in sandbox mode");
+            renderedTemplate = GroovySandbox.runInSandbox(
+                () -> {
+                    return templateFinal.make(bindings).toString();
+                },
+                new ProxyWhitelist(Whitelist.all())
+            );
+            return renderedTemplate;
+        }
+
+        // Not in sandbox
+        logger.println("simpleTemplateEngine running in script approval mode");
+        ScriptApproval.get().configuring(text, GroovyLanguage.get(), ApprovalContext.create().withCurrentUser().withItem(getContext().get(Item.class)));
         try {
-            SimpleTemplateEngineStep.DescriptorImpl descriptor = Jenkins.get().getDescriptorByType(SimpleTemplateEngineStep.DescriptorImpl.class);
-            GroovyShell shell = createEngine(descriptor, Collections.emptyMap(), false);
-            SimpleTemplateEngine engine = new SimpleTemplateEngine(shell);
-            Template tmpl;
-
-            synchronized(templateCache) {
-                Reference<Template> templateR = templateCache.get(text);
-                tmpl = templateR == null ? null : templateR.get();
-                if (tmpl == null) {
-                    tmpl = engine.createTemplate(text);
-                    templateCache.put(text, new SoftReference<>(tmpl));
-                }
-            }
-            final Template templateFinal = tmpl;
-
-            if (!step.isRunInSandbox()) {
-                logger.println("simpleTemplateEngine running in script approval mode");
-                ScriptApproval.get().configuring(text, GroovyLanguage.get(), ApprovalContext.create().withCurrentUser().withItem(getContext().get(Item.class)));
-                try {
-                    ScriptApproval.get().using(text, GroovyLanguage.get());
-                } catch (UnapprovedUsageException ex) {
-                    StringWriter sw = new StringWriter();
-                    PrintWriter pw = new PrintWriter(sw);
-                    Functions.printStackTrace(ex, pw);
-                    listener.error(ex.getMessage());
-                    return ex.getMessage() + "\n\n" + sw;
-                }
-                renderedTemplate = templateFinal.make(bindings).toString();
-            } else {
-                logger.println("simpleTemplateEngine running in sandbox mode");
-                renderedTemplate = GroovySandbox.runInSandbox(
-                    () -> {
-                        return templateFinal.make(bindings).toString();
-                    },
-                    new ProxyWhitelist(Whitelist.all())
-                );
-            }
+            ScriptApproval.get().using(text, GroovyLanguage.get());
+        } catch (UnapprovedUsageException e) {
+            logger.println("The following script given to " + fName + " has not yet been approved by an administrator:\n" + text);
+            throw e;
+        }
+        try {
+            renderedTemplate = templateFinal.make(bindings).toString();
         } catch (Exception ex) {
             StringWriter sw = new StringWriter();
             PrintWriter pw = new PrintWriter(sw);
             Functions.printStackTrace(ex, pw);
             renderedTemplate = "Exception raised during template rendering: " + ex.getMessage() + "\n\n" + sw;
         }
+
         return renderedTemplate;
     }
 

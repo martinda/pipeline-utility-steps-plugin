@@ -132,6 +132,7 @@ public class SimpleTemplateEngineStepTest {
         j.assertLogContains("simpleTemplateEngine", run);
     }
 
+    // TODO: repeat this test in sandbox to test error catching
     @Test
     public void incorrectTemplate() throws Exception {
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
@@ -160,7 +161,6 @@ public class SimpleTemplateEngineStepTest {
                     "String result = simpleTemplateEngine runInSandbox: true, text:text, bindings: binding\n"+
                 "}", true));
         WorkflowRun run = j.assertBuildStatusSuccess(p.scheduleBuild2(0));
-        System.out.println(j.getLog(run));
         j.assertLogContains("simpleTemplateEngine", run);
     }
 
@@ -179,7 +179,7 @@ public class SimpleTemplateEngineStepTest {
                     "String result = simpleTemplateEngine runInSandbox: false, text:text, bindings: binding\n"+
                 "}", true));
         WorkflowRun run = j.assertBuildStatus(Result.FAILURE, p.scheduleBuild2(0).get());
-        j.assertLogContains("simpleTemplateEngine", run);
+        j.assertLogContains("The following script given to simpleTemplateEngine has not yet been approved by an administrator:", run);
     }
 
     // TODO: The next test needs input stimulus that fails when runInSandbox is not set
