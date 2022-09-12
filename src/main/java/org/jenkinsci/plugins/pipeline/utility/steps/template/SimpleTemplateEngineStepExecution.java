@@ -48,6 +48,7 @@ import org.jenkinsci.plugins.scriptsecurity.sandbox.groovy.GroovySandbox;
 import org.jenkinsci.plugins.scriptsecurity.sandbox.whitelists.ProxyWhitelist;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ApprovalContext;
 import org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval;
+import org.jenkinsci.plugins.scriptsecurity.scripts.UnapprovedUsageException;
 import org.jenkinsci.plugins.scriptsecurity.scripts.languages.GroovyLanguage;
 import org.jenkinsci.plugins.workflow.steps.StepContext;
 
@@ -84,6 +85,7 @@ public class SimpleTemplateEngineStepExecution extends AbstractFileOrTextStepExe
         this.step = step;
     }
 
+    @SuppressWarnings( "deprecation" )
     @Override
     protected String doRun() throws Exception {
         TaskListener listener = getContext().get(TaskListener.class);
@@ -135,23 +137,22 @@ public class SimpleTemplateEngineStepExecution extends AbstractFileOrTextStepExe
 
             if (!step.isRunInSandbox()) {
                 logger.println("simpleTemplateEngine running in script approval mode");
-                ScriptApproval.get().configuring(text, GroovyLanguage.get(), ApprovalContext.create().withItem(getContext().get(Item.class)));
-                renderedTemplate = templateFinal.make(bindings).toString();
-                logger.println("Script approved: " + ScriptApproval.get().isScriptApproved(text, GroovyLanguage.get()));
-                if (ScriptApproval.get().isScriptApproved(text, GroovyLanguage.get())) {
-                    renderedTemplate = templateFinal.make(bindings).toString();
-                } else {
-                    logger.println("Not approved");
+                ScriptApproval.get().configuring(text, GroovyLanguage.get(), ApprovalContext.create().withCurrentUser().withItem(getContext().get(Item.class)));
+                try {
+                    ScriptApproval.get().using(text, GroovyLanguage.get());
+                } catch (UnapprovedUsageException ex) {
+                    listener.error(ex.getMessage());
+                    return ex.getMessage();
                 }
+                renderedTemplate = templateFinal.make(bindings).toString();
             } else {
                 logger.println("simpleTemplateEngine running in sandbox mode");
                 renderedTemplate = GroovySandbox.runInSandbox(
                     () -> {
-		    return templateFinal.make(bindings).toString();
+                        return templateFinal.make(bindings).toString();
                     },
                     new ProxyWhitelist(Whitelist.all())
                 );
-
             }
         } catch (Exception ex) {
             StringWriter sw = new StringWriter();

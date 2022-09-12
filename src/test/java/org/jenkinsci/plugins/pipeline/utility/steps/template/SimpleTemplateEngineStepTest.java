@@ -27,7 +27,6 @@ package org.jenkinsci.plugins.pipeline.utility.steps.template;
 import hudson.model.Result;
 import static org.jenkinsci.plugins.pipeline.utility.steps.FilenameTestsUtils.separatorsToSystemEscaped;
 import static org.jenkinsci.plugins.pipeline.utility.steps.Messages.AbstractFileOrTextStepDescriptorImpl_missingRequiredArgument;
-import java.io.File;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
 import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.jenkinsci.plugins.workflow.job.WorkflowRun;
@@ -196,6 +195,6 @@ public class SimpleTemplateEngineStepTest {
         WorkflowRun run = j.assertBuildStatus(Result.FAILURE, p.scheduleBuild2(0).get());
         j.assertLogContains("simpleTemplateEngine", run);
     }
-*/
     // TODO: a test that approves the script to be run so we can prove the script approval has worked
+*/
 }
