@@ -25,6 +25,7 @@
 package org.jenkinsci.plugins.pipeline.utility.steps.template;
 
 import hudson.model.Result;
+import hudson.model.Item;
 import static org.jenkinsci.plugins.pipeline.utility.steps.FilenameTestsUtils.separatorsToSystemEscaped;
 import static org.jenkinsci.plugins.pipeline.utility.steps.Messages.AbstractFileOrTextStepDescriptorImpl_missingRequiredArgument;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
@@ -33,7 +34,9 @@ import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.MockAuthorizationStrategy;
 import org.junit.rules.TemporaryFolder;
+import jenkins.model.Jenkins;
 
 /** Tests for {@link SimpleTemplateEngineStep}.
  *
@@ -161,11 +164,11 @@ public class SimpleTemplateEngineStepTest {
         j.assertLogContains("simpleTemplateEngine", run);
     }
 
-/*
     // TODO: The next test needs input stimulus that fails when runInSandbox is false.
     // We expect the test to fail and to tell the user to get approval
     @Test
-    public void runInSandboxFalseButIsRequired() throws Exception {
+    public void runInSandboxFalseButRequired() throws Exception {
+        setupSecurity();
         WorkflowJob p = j.jenkins.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition(
                 "node() {\n"+
@@ -196,5 +199,17 @@ public class SimpleTemplateEngineStepTest {
         j.assertLogContains("simpleTemplateEngine", run);
     }
     // TODO: a test that approves the script to be run so we can prove the script approval has worked
-*/
+
+    private void setupSecurity() {
+        j.jenkins.setSecurityRealm(j.createDummySecurityRealm());
+
+        j.jenkins.setAuthorizationStrategy(new MockAuthorizationStrategy()
+            // otherwise we would need to create users for each email address tested, to bypass SECURITY-372 fix:
+            .grant(Jenkins.READ, Item.READ).everywhere().toAuthenticated()
+            // TODO I had plans for tests where bob would approve scripts written by alice
+            .grant(Jenkins.ADMINISTER).everywhere().to("bob")
+            .grant(Item.EXTENDED_READ).everywhere().to("alice")
+        );
+    }
+
 }

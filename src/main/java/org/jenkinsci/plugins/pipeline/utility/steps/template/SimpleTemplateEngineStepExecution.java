@@ -141,8 +141,11 @@ public class SimpleTemplateEngineStepExecution extends AbstractFileOrTextStepExe
                 try {
                     ScriptApproval.get().using(text, GroovyLanguage.get());
                 } catch (UnapprovedUsageException ex) {
+                    StringWriter sw = new StringWriter();
+                    PrintWriter pw = new PrintWriter(sw);
+                    Functions.printStackTrace(ex, pw);
                     listener.error(ex.getMessage());
-                    return ex.getMessage();
+                    return ex.getMessage() + "\n\n" + sw;
                 }
                 renderedTemplate = templateFinal.make(bindings).toString();
             } else {
